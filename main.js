@@ -7,8 +7,12 @@ if (typeof window === 'undefined') {
 function main() {
 }
 
-// spec: YYYY, D, M D, m M, h H, hm H M, YYYY M D, YYYY M D H, YYYY M D H M
-// return an UTC date
+/* spec:
+     YYYY, D,
+     M D, m M, h H,
+     hm H M, YYYY M D,
+     YYYY M D H, YYYY M D H M
+   return an UTC date */
 function future_date(spec, now) {
     spec = spec.split(/\s+/).filter(Boolean)
     now = now || new Date()
@@ -27,14 +31,15 @@ function future_date(spec, now) {
         if (n >= now.getDate() && n <= days_in_month(cur.year, cur.month+1)) {
             return mk_date_utc(cur.year, cur.month+1, n)
         } else if (n <= 31 && n <= days_in_month(cur.year, cur.month+2)) {
-            // FIXME: adding to december won't do
-            return mk_date_utc(cur.year, cur.month+2, n)
+            let d = mk_date_utc(cur.year, cur.month+1, n)
+            return datetime_add_months(d, 1)
         } else if (n > cur.year) {
             return mk_date_utc(n)
         }
 
         throw new Error('YYYY, D')
     }
+
     if (spec.length === 2) {
         // M D (a month & a date), m M (a month only), h H (an hour only)
         if (spec[0] === 'm') {
@@ -56,8 +61,8 @@ function future_date(spec, now) {
         }
 
         let [m, d] = spec.map(Number)
-        let dmax = days_in_month(cur.year, m)
         if (m >= cur.month+1 && m <= 12) { // probably later this year
+            let dmax = days_in_month(cur.year, m)
             if (d >= cur.date && d <= dmax) // definitely later this year
                 return mk_date_utc(cur.year, m, d)
             // in the next year
@@ -66,6 +71,7 @@ function future_date(spec, now) {
             if (d >= 1 && d <= dmax) return mk_date_utc(cur.year, m, d)
 
         } else if (m >= 1 && m <= 12) { // in the next year
+            let dmax = days_in_month(cur.year, m)
             cur = datetime(mk_date_utc(cur.year+1, m))
             dmax = days_in_month(cur.year, m)
             if (d >= 1 && d <= dmax) return mk_date_utc(cur.year, m, d)
@@ -73,8 +79,45 @@ function future_date(spec, now) {
         throw new Error('M D')
     }
 
+    if (spec.length === 3) { // hm H M, YYYY M D
+        if (spec[0] === 'hm') {
+            let [h, m] = spec.slice(1).map(Number)
+            if (! (h >= 0 && h <= 23 && m >= 0 && m <= 59))
+                throw new Error('hm H M')
+
+            if (h < cur.hour
+                || (h === cur.hour && m <= cur.minutes) ) { // the next day
+                cur = datetime(new Date(now.valueOf() + 60*60*24 * 1000))
+                return mk_date_utc(cur.year, cur.month+1, cur.date, h, m)
+            }
+
+            // later this day
+            return mk_date_utc(cur.year, cur.month+1, cur.date, h, m)
+        }
+
+        let d = mk_date_utc(...spec)
+        if (isNaN(d) || d < now) throw new Error('YYYY M D')
+        return d
+    }
+
+    if (spec.length >= 4 && spec.length <= 5) { // YYYY M D H, YYYY M D H M
+        let d = mk_date_utc(...spec)
+        if (isNaN(d) || d < now) throw new Error('YYYY M D H, YYYY M D H M')
+        return d
+    }
+
     throw new Error('invalid date spec')
 }
+
+function datetime_add_months(datetime, months) {
+    datetime = new Date(datetime.getTime()) // clone
+    var d = datetime.getDate()
+    datetime.setMonth(datetime.getMonth() + +months)
+    if (datetime.getDate() !== d) datetime.setDate(0)
+    return datetime
+}
+
+function future_date_is_fixed(spec) { return /\s*\d{4}\b/.test(spec) }
 
 // `m` is 1-indexed
 function days_in_month (y, m) {
@@ -98,6 +141,7 @@ function run_tests() {
             // tomorrow
             assert.equal(future_date('18', new Date('2019-11-17T11:11:11.000Z')).toISOString(), '2019-11-18T00:00:00.000Z')
             assert.equal(future_date('31', new Date('2019-12-30T11:11:11.000Z')).toISOString(), '2019-12-31T00:00:00.000Z')
+            assert.equal(future_date('1', new Date('2019-12-30T11:11:11.000Z')).toISOString(), '2020-01-01T00:00:00.000Z')
 
             assert.throws(() => future_date('32'))
             assert.throws(() => future_date('first'))
@@ -131,9 +175,49 @@ function run_tests() {
             assert.equal(future_date('11 18', new Date('2019-11-17T11:11:11.000Z')).toISOString(), '2019-11-18T00:00:00.000Z')
             // next year
             assert.equal(future_date('11 2', new Date('2019-11-17T11:11:11.000Z')).toISOString(), '2020-11-02T00:00:00.000Z')
+            // the new year
+            assert.equal(future_date('1 1', new Date('2019-11-17T11:11:11.000Z')).toISOString(), '2020-01-01T00:00:00.000Z')
 
             assert.throws(() => future_date('2 31'))
             assert.throws(() => future_date('next dec'))
+        })
+
+        test('hm H M, YYYY M D', function() {
+            // later this hour
+            assert.equal(future_date('hm 13 12', new Date('2019-11-17T11:11:11.000Z')).toISOString(), '2019-11-17T13:12:00.000Z')
+            // later this day
+            assert.equal(future_date('hm 20 00', new Date('2019-11-17T11:11:11.000Z')).toISOString(), '2019-11-17T20:00:00.000Z')
+            // next day
+            assert.equal(future_date('hm 13 11', new Date('2019-11-17T11:11:11.000Z')).toISOString(), '2019-11-18T13:11:00.000Z')
+
+            assert.throws(() => future_date('hm 24 60'))
+
+            assert.equal(future_date('2019 11 18', new Date('2019-11-17T11:11:11.000Z')).toISOString(), '2019-11-18T00:00:00.000Z')
+
+            assert.throws(() => future_date('2019 11 16'))
+        })
+
+        test('YYYY M D H, YYYY M D H M', function() {
+            assert.equal(future_date('2019 11 17 20', new Date('2019-11-17T11:11:11.000Z')).toISOString(), '2019-11-17T20:00:00.000Z')
+            assert.equal(future_date('2019 11 17 20 12', new Date('2019-11-17T11:11:11.000Z')).toISOString(), '2019-11-17T20:12:00.000Z')
+
+            assert.throws(() => future_date('2019 11 16 20 12'))
+        })
+
+        test('future_date_is_fixed', function() {
+            assert.equal(future_date_is_fixed(' 2000 '), true)
+            assert.equal(future_date_is_fixed('2000'), true)
+            assert.equal(future_date_is_fixed('1'), false)
+
+            assert.equal(future_date_is_fixed('1 2'), false)
+            assert.equal(future_date_is_fixed('m 1'), false)
+            assert.equal(future_date_is_fixed('h 1'), false)
+
+            assert.equal(future_date_is_fixed('hm 1 2'), false)
+            assert.equal(future_date_is_fixed('2000 1 1'), true)
+
+            assert.equal(future_date_is_fixed('2000 1 1 1'), true)
+            assert.equal(future_date_is_fixed('2000 1 1 1 1'), true)
         })
     })
 }
