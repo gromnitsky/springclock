@@ -7,6 +7,28 @@ if (typeof window === 'undefined') {
 function main() {
 }
 
+let seasons = [
+    { spec: '1 1', desc: 'New Year' },
+    { spec: '3 1', desc: 'Spring' },
+    { spec: '6 1', desc: 'Summer' },
+    { spec: '9 1', desc: 'Autumn' },
+    { spec: '12 1', desc: 'Winter' }
+]
+
+// `dates` - [ {events: Event, desc: String }, ...]
+function future_date_select(events, now) {
+    events = events.slice().map( v => ({
+        date: future_date(v.spec, now),
+        spec: v.spec,
+        desc: v.desc,
+    }) ).sort( (a, b) => a.date - b.date)
+    now = now || new Date()
+    for (let event of events) {
+        if (now <= event.date) return event
+    }
+    throw new Error('no suitable future event found')
+}
+
 /* spec:
      YYYY, D,
      M D, m M, h H,
@@ -61,22 +83,29 @@ function future_date(spec, now) {
         }
 
         let [m, d] = spec.map(Number)
-        if (m >= cur.month+1 && m <= 12) { // probably later this year
-            let dmax = days_in_month(cur.year, m)
-            if (d >= cur.date && d <= dmax) // definitely later this year
-                return mk_date_utc(cur.year, m, d)
-            // in the next year
-            cur = datetime(mk_date_utc(cur.year+1, m))
-            dmax = days_in_month(cur.year, m)
-            if (d >= 1 && d <= dmax) return mk_date_utc(cur.year, m, d)
+        let error = Error('M D')
+        if (! (m >= 1 && m <= 12)) throw new error
+        let vadid_date = (cur, d) => d >= 1 && d <= days_in_month(cur.year, m)
 
-        } else if (m >= 1 && m <= 12) { // in the next year
-            let dmax = days_in_month(cur.year, m)
+        if (m < cur.month+1) { // the next year
             cur = datetime(mk_date_utc(cur.year+1, m))
-            dmax = days_in_month(cur.year, m)
-            if (d >= 1 && d <= dmax) return mk_date_utc(cur.year, m, d)
+            if (vadid_date(cur, d)) return mk_date_utc(cur.year, m, d)
         }
-        throw new Error('M D')
+
+        if (m === cur.month+1) {
+            if (d <= cur.date) { // the next year
+                cur = datetime(mk_date_utc(cur.year+1, m))
+                if (vadid_date(cur, d)) return mk_date_utc(cur.year, m, d)
+            } else { // this year
+                if (vadid_date(cur, d)) return mk_date_utc(cur.year, m, d)
+            }
+        }
+
+        if (m > cur.month+1) { // this year
+            if (vadid_date(cur, d)) return mk_date_utc(cur.year, m, d)
+        }
+
+        throw new error
     }
 
     if (spec.length === 3) { // hm H M, YYYY M D
@@ -173,6 +202,8 @@ function run_tests() {
 
             // M D, later this month
             assert.equal(future_date('11 18', new Date('2019-11-17T11:11:11.000Z')).toISOString(), '2019-11-18T00:00:00.000Z')
+            // this year
+            assert.equal(future_date('12 1', new Date('2019-11-17T11:11:11.000Z')).toISOString(), '2019-12-01T00:00:00.000Z')
             // next year
             assert.equal(future_date('11 2', new Date('2019-11-17T11:11:11.000Z')).toISOString(), '2020-11-02T00:00:00.000Z')
             // the new year
@@ -218,6 +249,16 @@ function run_tests() {
 
             assert.equal(future_date_is_fixed('2000 1 1 1'), true)
             assert.equal(future_date_is_fixed('2000 1 1 1 1'), true)
+        })
+    })
+
+    suite('future date selection', function() {
+        test('future_date_select', function() {
+            assert.equal(future_date_select(seasons, new Date('2019-11-17T11:11:11.000Z')).desc, 'Winter')
+            assert.equal(future_date_select(seasons, new Date('2019-12-17T11:11:11.000Z')).desc, 'New Year')
+
+            let events = seasons.concat({spec: '12 14', desc: 'omglol'})
+            assert.equal(future_date_select(events, new Date('2019-12-13T11:11:11.000Z')).desc, 'omglol')
         })
     })
 }
