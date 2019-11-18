@@ -8,12 +8,40 @@ if (typeof window === 'undefined') {
 }
 
 function main() {
-    let $ = document.querySelector.bind(document)
-    $('#widget').innerHTML = ''
-    $('#widget').appendChild($('#countdown').content)
+    let now = () => new Date()
+    let event = future_date_select(seasons.concat({
+        spec: 'hm 15 14',
+        desc: 'omglol'
+    }))
+    let state
+    window.setInterval(() => {
+        let diff = moment(event.date).diff(now())
+//        console.log(diff)
+        if (diff < 0) {
+            diff = -1 * ((diff / 1000) | 0)
+            if (diff < 3) {
+                update_transition(state, diff, event)
+                state = 'transition'
+            } else { // select next event
+                event = future_date_select(seasons)
+            }
+            return
+        }
+        update_countdown(state, diff, event)
+        state = 'countdown'
 
-    let event = future_date_select(seasons)
-    let diff = moment(event.date).diff(new Date())
+    }, 3*1000)
+}
+
+function $(q) { return document.querySelector(q) }
+
+function update_countdown(state, diff, event) {
+    if (state !== 'countdown') {
+        console.log('countdown')
+        $('#widget').innerHTML = ''
+        $('#widget').appendChild(document.importNode($('#countdown').content, true))
+    }
+
     let left = moment.duration(diff)
     $('#years').innerText = left.years()
     $('#months').innerText = left.months()
@@ -23,7 +51,17 @@ function main() {
     $('#seconds').innerText = left.seconds()
 
     $('.event_name').innerText = event.desc
+    $('#now').innerText = new Date()
+}
 
+function update_transition(state, seconds, event) {
+    if (state !== 'transition') {
+        console.log('transition')
+        $('#widget').innerHTML = ''
+        $('#widget').appendChild(document.importNode($('#transition').content, true))
+    }
+    $('#seconds').innerText = seconds
+    $('.event_name').innerText = event.desc
     $('#now').innerText = new Date()
 }
 
@@ -178,7 +216,7 @@ function pad(s) { return ('0'+s).slice(-2) }
 
 // `month` is 1-indexed
 function mk_date_utc(year, month = 1, date = 1, hour = 0, minutes = 0) {
-    return new Date(`${year}-${pad(month)}-${pad(date)}T${pad(hour)}:${pad(minutes)}:00.000Z`)
+    return new Date(`${year}-${pad(month)}-${pad(date)}T${pad(hour)}:${pad(minutes)}:00`)
 }
 
 function run_tests() {
