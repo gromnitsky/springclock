@@ -1,0 +1,96 @@
+<!doctype html>
+<title>springclock</title>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  html { height: 100%; }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    height: calc(100% - 16px);
+  }
+  
+  .center { text-align: center; }
+
+  @media (orientation: landscape) {
+    .triplet { font-size: 25vh; }
+  }
+  @media (orientation: portrait) {
+    .triplet { font-size: 20vw; }
+  }
+  
+  .triplet {
+    display: grid;
+    grid-template-columns: 30% auto 30% auto 30%;
+  }
+  .triplet span { justify-self: center; }
+  .label { font-size: 1vh; }
+  .event_name { cursor: pointer; }
+  .event_name:hover { background: yellow; }
+
+  #clock {
+    flex-grow: 1;
+    align-self: center;
+
+    background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.9) 100%), url(ornament.svg);
+    background-repeat: no-repeat;
+    background-position: right top;
+    background-size: 100% auto;
+  }
+
+  #widget {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  #now {
+    border-top: 1px solid gray;
+    padding-top: 0.5em;
+  }
+</style>
+
+<template id="countdown">
+  <div style="flex-grow: 1">
+    <div class="triplet">
+      <span id="years"></span><span>-</span>
+      <span id="months"></span><span>-</span>
+      <span id="days"></span>
+      
+      <span class="label">Years</span><span><!-- empty --></span>
+      <span class="label">Months</span><span><!-- empty --></span>
+      <span class="label">Days</span>
+
+      
+      <span id="hours"></span><span>:</span>
+      <span id="minutes"></span><span>:</span>
+      <span id="seconds"></span>
+      
+      <span class="label">Hours</span><span><!-- empty --></span>
+      <span class="label">Minutes</span><span><!-- empty --></span>
+      <span class="label">Seconds</span>
+    </div>
+  </div>
+  <h1 class="center">Until <span class="event_name"></span></h1>
+</template>
+
+<template id="transition">
+  <div style="flex-grow: 1">
+    <span id="seconds"></span>
+  </div>
+  <h1 class="center">Seconds since <span class="event_name"></span></h1>
+</template>
+
+<div id="clock">
+  <div id="widget">
+    <h1>Loading...</h1>
+    <noscript>Error: JS is required</noscript>
+  </div>
+</div>
+
+<div id="now" class="center"><!-- current time --></div>
+
+<script src="node_modules/moment/min/moment.min.js"></script>
+<script src="main.js"></script>

@@ -1,3 +1,6 @@
+'use strict';
+/* global moment, dialogPolyfill */
+
 if (typeof window === 'undefined') {
     run_tests()                 // mocha --ui=tdd
 } else {
@@ -5,10 +8,27 @@ if (typeof window === 'undefined') {
 }
 
 function main() {
+    let $ = document.querySelector.bind(document)
+    $('#widget').innerHTML = ''
+    $('#widget').appendChild($('#countdown').content)
+
+    let event = future_date_select(seasons)
+    let diff = moment(event.date).diff(new Date())
+    let left = moment.duration(diff)
+    $('#years').innerText = left.years()
+    $('#months').innerText = left.months()
+    $('#days').innerText = left.days()
+    $('#hours').innerText = left.hours()
+    $('#minutes').innerText = left.minutes()
+    $('#seconds').innerText = left.seconds()
+
+    $('.event_name').innerText = event.desc
+
+    $('#now').innerText = new Date()
 }
 
 let seasons = [
-    { spec: '1 1', desc: 'New Year' },
+    { spec: '1 1', desc: 'The New Year' },
     { spec: '3 1', desc: 'Spring' },
     { spec: '6 1', desc: 'Summer' },
     { spec: '9 1', desc: 'Autumn' },
