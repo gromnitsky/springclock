@@ -1,77 +1,101 @@
 'use strict';
 /* global moment, dialogPolyfill */
 
-if (typeof window === 'undefined') {
-    run_tests()                 // mocha --ui=tdd
-} else {
+if (typeof window !== 'undefined') {
+    window.exports = {}
     document.addEventListener('DOMContentLoaded', main)
 }
 
 function main() {
     let now = () => new Date()
-    let event = future_date_select(seasons.concat({
-        spec: 'hm 15 14',
-        desc: 'omglol'
-    }))
-    let state
-    window.setInterval(() => {
+    let select_event = () => {
+        return future_date_select(seasons.concat({
+            spec: 'hm 9 8',
+            desc: 'omglol'
+        }))
+    }
+
+    let upd = update_screen(select_event, now)
+    window.setInterval(upd, 1*1000)
+}
+
+function update_screen(select_event, now) {
+    let transition = new Widget('#transition')
+    let countdown = new Countdown('#countdown')
+
+    let event = select_event()
+    return () => {
+        $('#now').innerText = new Date()
+
         let diff = moment(event.date).diff(now())
-//        console.log(diff)
         if (diff < 0) {
             diff = -1 * ((diff / 1000) | 0)
             if (diff < 3) {
-                update_transition(state, diff, event)
-                state = 'transition'
-            } else { // select next event
-                event = future_date_select(seasons)
+                transition.update(event, diff)
+                countdown.live = false
+            } else {
+                console.log('select next event')
+                event = select_event()
             }
             return
         }
-        update_countdown(state, diff, event)
-        state = 'countdown'
-
-    }, 3*1000)
+        countdown.update(event, diff)
+        transition.live = false
+    }
 }
 
 function $(q) { return document.querySelector(q) }
 
-function update_countdown(state, diff, event) {
-    if (state !== 'countdown') {
-        console.log('countdown')
+class Widget {
+    constructor(css_query) {
+        this.live = false
+        this.css_query = css_query
+    }
+    install() {
+        if (this.live) return
+        console.log(this.css_query)
         $('#widget').innerHTML = ''
-        $('#widget').appendChild(document.importNode($('#countdown').content, true))
+        $('#widget').appendChild(document.importNode($(this.css_query).content, true))
+        this.dom_setup()
+        this.live = true
+    }
+    update(event, diff) {
+        this.install()
+        this.dom_update(event, diff)
     }
 
-    let left = moment.duration(diff)
-    $('#years').innerText = left.years()
-    $('#months').innerText = left.months()
-    $('#days').innerText = left.days()
-    $('#hours').innerText = left.hours()
-    $('#minutes').innerText = left.minutes()
-    $('#seconds').innerText = left.seconds()
-
-    $('.event_name').innerText = event.desc
-    $('#now').innerText = new Date()
+    dom_setup() {               // overridable
+        [this.seconds, this.event_name] = document.querySelectorAll('#seconds, .event_name')
+    }
+    dom_update(event, diff) {   // overridable
+        [this.seconds.innerText, this.event_name.innerText] = [diff, event.desc]
+    }
 }
 
-function update_transition(state, seconds, event) {
-    if (state !== 'transition') {
-        console.log('transition')
-        $('#widget').innerHTML = ''
-        $('#widget').appendChild(document.importNode($('#transition').content, true))
+class Countdown extends Widget {
+    dom_setup() {
+        super.dom_setup()
+        ;['years','months','days',
+          'hours','minutes'].forEach( v => this[v] = $('#'+v))
     }
-    $('#seconds').innerText = seconds
-    $('.event_name').innerText = event.desc
-    $('#now').innerText = new Date()
+    dom_update(event, diff) {
+        let left = moment.duration(diff)
+        ;['years','months','days'].forEach( v => this[v].innerText = left[v]())
+        ;['hours','minutes','seconds'].forEach( v => {
+            this[v].innerText = pad(left[v]())
+        })
+        this.event_name.innerText = event.desc
+    }
 }
 
 let seasons = [
-    { spec: '1 1', desc: 'The New Year' },
+    { spec: '1 1', desc: 'The New Year' }, // Event
     { spec: '3 1', desc: 'Spring' },
     { spec: '6 1', desc: 'Summer' },
     { spec: '9 1', desc: 'Autumn' },
     { spec: '12 1', desc: 'Winter' }
 ]
+exports.seasons = seasons
 
 // `dates` - [ {events: Event, desc: String }, ...]
 function future_date_select(events, now) {
@@ -86,13 +110,14 @@ function future_date_select(events, now) {
     }
     throw new Error('no suitable future event found')
 }
+exports.future_date_select = future_date_select
 
 /* spec:
      YYYY, D,
      M D, m M, h H,
      hm H M, YYYY M D,
      YYYY M D H, YYYY M D H M
-   return an UTC date */
+   return Date */
 function future_date(spec, now) {
     spec = spec.split(/\s+/).filter(Boolean)
     now = now || new Date()
@@ -108,7 +133,7 @@ function future_date(spec, now) {
     if (spec.length === 1) {
         // YYYY (a year) or D (a date in the current/next month)
         let n = Number(spec[0])
-        if (n >= now.getDate() && n <= days_in_month(cur.year, cur.month+1)) {
+        if (n >= cur.date && n <= days_in_month(cur.year, cur.month+1)) {
             return mk_date_utc(cur.year, cur.month+1, n)
         } else if (n <= 31 && n <= days_in_month(cur.year, cur.month+2)) {
             let d = mk_date_utc(cur.year, cur.month+1, n)
@@ -204,8 +229,6 @@ function datetime_add_months(datetime, months) {
     return datetime
 }
 
-function future_date_is_fixed(spec) { return /\s*\d{4}\b/.test(spec) }
-
 // `m` is 1-indexed
 function days_in_month (y, m) {
     let now = new Date()
@@ -219,104 +242,4 @@ function mk_date_utc(year, month = 1, date = 1, hour = 0, minutes = 0) {
     return new Date(`${year}-${pad(month)}-${pad(date)}T${pad(hour)}:${pad(minutes)}:00`)
 }
 
-function run_tests() {
-    let assert = require('assert')
-    process.env.TZ = 'Europe/Kiev'
-
-    suite('future_date', function() {
-        test('YYYY, D', function() {
-            // tomorrow
-            assert.equal(future_date('18', new Date('2019-11-17T11:11:11.000Z')).toISOString(), '2019-11-18T00:00:00.000Z')
-            assert.equal(future_date('31', new Date('2019-12-30T11:11:11.000Z')).toISOString(), '2019-12-31T00:00:00.000Z')
-            assert.equal(future_date('1', new Date('2019-12-30T11:11:11.000Z')).toISOString(), '2020-01-01T00:00:00.000Z')
-
-            assert.throws(() => future_date('32'))
-            assert.throws(() => future_date('first'))
-
-            // date in the next month
-            assert.equal(future_date('2', new Date('2019-11-17T11:11:11.000Z')).toISOString(), '2019-12-02T00:00:00.000Z')
-
-            // next year
-            assert.equal(future_date('2020', new Date('2019-11-17T11:11:11.000Z')).toISOString(), '2020-01-01T00:00:00.000Z')
-            assert.equal(future_date('2021', new Date('2019-11-17T11:11:11.000Z')).toISOString(), '2021-01-01T00:00:00.000Z')
-        })
-
-        test('M D, m M, h H', function() {
-            // the next month
-            assert.equal(future_date('m 12', new Date('2019-11-17T11:11:11.000Z')).toISOString(), '2019-12-01T00:00:00.000Z')
-            // some month in the next year
-            assert.equal(future_date('m 2', new Date('2019-11-17T11:11:11.000Z')).toISOString(), '2020-02-01T00:00:00.000Z')
-
-            assert.throws(() => future_date('m december'))
-            assert.throws(() => future_date('m 123'))
-
-            // later this day
-            assert.equal(future_date('h 23', new Date('2019-11-17T11:11:11.000Z')).toISOString(), '2019-11-17T23:00:00.000Z')
-            // the next day
-            assert.equal(future_date('h 2', new Date('2019-11-17T11:11:11.000Z')).toISOString(), '2019-11-18T02:00:00.000Z')
-            assert.equal(future_date('h 2', new Date('2019-12-31T11:11:11.000Z')).toISOString(), '2020-01-01T02:00:00.000Z')
-
-            assert.throws(() => future_date('h 25'))
-
-            // M D, later this month
-            assert.equal(future_date('11 18', new Date('2019-11-17T11:11:11.000Z')).toISOString(), '2019-11-18T00:00:00.000Z')
-            // this year
-            assert.equal(future_date('12 1', new Date('2019-11-17T11:11:11.000Z')).toISOString(), '2019-12-01T00:00:00.000Z')
-            // next year
-            assert.equal(future_date('11 2', new Date('2019-11-17T11:11:11.000Z')).toISOString(), '2020-11-02T00:00:00.000Z')
-            // the new year
-            assert.equal(future_date('1 1', new Date('2019-11-17T11:11:11.000Z')).toISOString(), '2020-01-01T00:00:00.000Z')
-
-            assert.throws(() => future_date('2 31'))
-            assert.throws(() => future_date('next dec'))
-        })
-
-        test('hm H M, YYYY M D', function() {
-            // later this hour
-            assert.equal(future_date('hm 13 12', new Date('2019-11-17T11:11:11.000Z')).toISOString(), '2019-11-17T13:12:00.000Z')
-            // later this day
-            assert.equal(future_date('hm 20 00', new Date('2019-11-17T11:11:11.000Z')).toISOString(), '2019-11-17T20:00:00.000Z')
-            // next day
-            assert.equal(future_date('hm 13 11', new Date('2019-11-17T11:11:11.000Z')).toISOString(), '2019-11-18T13:11:00.000Z')
-
-            assert.throws(() => future_date('hm 24 60'))
-
-            assert.equal(future_date('2019 11 18', new Date('2019-11-17T11:11:11.000Z')).toISOString(), '2019-11-18T00:00:00.000Z')
-
-            assert.throws(() => future_date('2019 11 16'))
-        })
-
-        test('YYYY M D H, YYYY M D H M', function() {
-            assert.equal(future_date('2019 11 17 20', new Date('2019-11-17T11:11:11.000Z')).toISOString(), '2019-11-17T20:00:00.000Z')
-            assert.equal(future_date('2019 11 17 20 12', new Date('2019-11-17T11:11:11.000Z')).toISOString(), '2019-11-17T20:12:00.000Z')
-
-            assert.throws(() => future_date('2019 11 16 20 12'))
-        })
-
-        test('future_date_is_fixed', function() {
-            assert.equal(future_date_is_fixed(' 2000 '), true)
-            assert.equal(future_date_is_fixed('2000'), true)
-            assert.equal(future_date_is_fixed('1'), false)
-
-            assert.equal(future_date_is_fixed('1 2'), false)
-            assert.equal(future_date_is_fixed('m 1'), false)
-            assert.equal(future_date_is_fixed('h 1'), false)
-
-            assert.equal(future_date_is_fixed('hm 1 2'), false)
-            assert.equal(future_date_is_fixed('2000 1 1'), true)
-
-            assert.equal(future_date_is_fixed('2000 1 1 1'), true)
-            assert.equal(future_date_is_fixed('2000 1 1 1 1'), true)
-        })
-    })
-
-    suite('future date selection', function() {
-        test('future_date_select', function() {
-            assert.equal(future_date_select(seasons, new Date('2019-11-17T11:11:11.000Z')).desc, 'Winter')
-            assert.equal(future_date_select(seasons, new Date('2019-12-17T11:11:11.000Z')).desc, 'New Year')
-
-            let events = seasons.concat({spec: '12 14', desc: 'omglol'})
-            assert.equal(future_date_select(events, new Date('2019-12-13T11:11:11.000Z')).desc, 'omglol')
-        })
-    })
-}
+exports.future_date = future_date
