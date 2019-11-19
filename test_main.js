@@ -2,7 +2,7 @@
 'use strict';
 
 let assert = require('assert')
-let {future_date, future_date_select, seasons} = require('./main')
+let {future_date, future_date_select, seasons, events_parse} = require('./main')
 process.env.TZ = 'Europe/Kiev'
 
 suite('future_date', function() {
@@ -83,5 +83,14 @@ suite('future date selection', function() {
 
         let events = seasons.concat({spec: '12 14', desc: 'omglol'})
         assert.equal(future_date_select(events, new Date('2019-12-13T11:11:11.000Z')).desc, 'omglol')
+    })
+
+    test('events_parse', function() {
+        assert.deepEqual(events_parse(''), [])
+        assert.deepEqual(events_parse('1  1\n  hm 1 1  , omglol'),
+                         [{spec: '1  1', desc: ''}, {spec: '  hm 1 1  ', desc: ' omglol'}])
+
+        assert.throws(() => events_parse('1  1\n omglol'),
+                      /Error: line 2: " omglol" is invalid: YYYY, D/)
     })
 })

@@ -7,16 +7,25 @@ if (typeof window !== 'undefined') {
 }
 
 function main() {
+    Settings()
+    let events = seasons.concat(get_events_from_url())
+    console.log(events)
+
     let now = () => new Date()
-    let select_event = () => {
-        return future_date_select(seasons.concat({
-            spec: 'hm 9 8',
-            desc: 'omglol'
-        }))
-    }
+    let select_event = () => future_date_select(events)
 
     let upd = update_screen(select_event, now)
     window.setInterval(upd, 1*1000)
+}
+
+function get_events_from_url() {
+    let params = new URLSearchParams(window.location.search)
+    try {
+        return events_parse(params.get('e'))
+    } catch (e) {
+        console.log(e)
+    }
+    return []
 }
 
 function update_screen(select_event, now) {
@@ -68,7 +77,7 @@ class Widget {
         [this.seconds, this.event_name] = document.querySelectorAll('#seconds, .event_name')
     }
     dom_update(event, diff) {   // overridable
-        [this.seconds.innerText, this.event_name.innerText] = [diff, event.desc]
+        [this.seconds.innerText, this.event_name.innerText] = [diff, event.desc || `'${event.spec}'`]
     }
 }
 
@@ -84,8 +93,37 @@ class Countdown extends Widget {
         ;['hours','minutes','seconds'].forEach( v => {
             this[v].innerText = pad(left[v]())
         })
-        this.event_name.innerText = event.desc
+        this.event_name.innerText = event.desc || `'${event.spec}'`
     }
+}
+
+function Settings() {
+    let dlg = $('dialog')
+    let params = new URLSearchParams(window.location.search)
+    dlg.querySelector('textarea').value = params.get('e')
+
+    dlg.querySelector('form').onsubmit = evt => {
+        evt.preventDefault()
+        let text = dlg.querySelector('textarea').value
+        let events
+        try {
+            events = events_parse(text)
+        } catch(e) {
+            alert(e)
+            return
+        }
+        let params = new URLSearchParams(window.location.search)
+        if (events.length) params.set('e', text)
+        window.location.replace(window.location.pathname + '?' + params)
+    }
+
+    dlg.querySelector('button').onclick = evt => {
+        evt.preventDefault()
+        dlg.close()
+    }
+
+    dialogPolyfill.registerDialog(dlg)
+    $('#now').onclick = () => dlg.showModal()
 }
 
 let seasons = [
@@ -99,11 +137,15 @@ exports.seasons = seasons
 
 // `dates` - [ {events: Event, desc: String }, ...]
 function future_date_select(events, now) {
-    events = events.slice().map( v => ({
-        date: future_date(v.spec, now),
-        spec: v.spec,
-        desc: v.desc,
-    }) ).sort( (a, b) => a.date - b.date)
+    events = events.slice().map( v => { // silently ignore invalid events
+        let date
+        try {
+            date = future_date(v.spec, now)
+        } catch (e) {
+            return false
+        }
+        return { date, spec: v.spec, desc: v.desc }
+    }).filter(Boolean).sort( (a, b) => a.date - b.date)
     now = now || new Date()
     for (let event of events) {
         if (now <= event.date) return event
@@ -167,7 +209,7 @@ function future_date(spec, now) {
 
         let [m, d] = spec.map(Number)
         let error = Error('M D')
-        if (! (m >= 1 && m <= 12)) throw new error
+        if (! (m >= 1 && m <= 12)) throw error
         let vadid_date = (cur, d) => d >= 1 && d <= days_in_month(cur.year, m)
 
         if (m < cur.month+1) { // the next year
@@ -188,7 +230,7 @@ function future_date(spec, now) {
             if (vadid_date(cur, d)) return mk_date_utc(cur.year, m, d)
         }
 
-        throw new error
+        throw error
     }
 
     if (spec.length === 3) { // hm H M, YYYY M D
@@ -243,3 +285,18 @@ function mk_date_utc(year, month = 1, date = 1, hour = 0, minutes = 0) {
 }
 
 exports.future_date = future_date
+
+function events_parse(str) {
+    return str.split("\n").map( (line, idx) => {
+        let [spec, desc] = line.split(',')
+        if (!spec.trim()) return false
+        try {
+            future_date(spec)
+        } catch (e) {
+            throw new Error(`line ${idx+1}: "${spec}" is invalid: ${e.message}`)
+        }
+        return {spec, desc: desc || ''}
+    }).filter(Boolean)
+}
+
+exports.events_parse = events_parse

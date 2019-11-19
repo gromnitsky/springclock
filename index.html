@@ -3,16 +3,20 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="node_modules/dialog-polyfill/dist/dialog-polyfill.css">
 <style>
   html { height: 100%; }
 
   body {
     display: flex;
     flex-direction: column;
-    height: calc(100% - 16px);
+    height: 100%;
+    margin-top: 0;
+    margin-bottom: 0;
   }
-  
+
   .center { text-align: center; }
+  code { background: #f7f7f7; }
 
   @media (orientation: landscape) {
     .triplet { font-size: 25vh; }
@@ -20,21 +24,19 @@
   @media (orientation: portrait) {
     .triplet { font-size: 20vw; }
   }
-  
+
   .triplet {
     display: grid;
     grid-template-columns: 30% auto 30% auto 30%;
   }
   .triplet span { justify-self: center; }
   .label { font-size: 1vh; }
-  .event_name { cursor: pointer; }
-  .event_name:hover { background: yellow; }
 
   #clock {
     flex-grow: 1;
     align-self: center;
 
-    background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.9) 100%), url(ornament.svg);
+    background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.9) 100%), url(background.svg);
     background-repeat: no-repeat;
     background-position: right top;
     background-size: 100% auto;
@@ -48,7 +50,30 @@
 
   #now {
     border-top: 1px solid gray;
-    padding-top: 0.5em;
+    padding: 0.5em 0;
+    margin: 0 -0.5em;
+    cursor: pointer;
+  }
+  #now:hover { background: yellow; }
+
+  dialog {
+    width: 310px;
+    border: 1px solid lightgray;
+    border-radius: 3px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.6);
+  }
+
+  dialog hr {
+    border: 0;
+    border-top: 1px solid lightgray;
+    margin: 1em -1em;
+  }
+
+  dialog textarea {
+    width: 100%;
+    resize: none;
+    white-space: pre;
+    box-sizing: border-box;
   }
 </style>
 
@@ -58,16 +83,16 @@
       <span id="years"></span><span>-</span>
       <span id="months"></span><span>-</span>
       <span id="days"></span>
-      
+
       <span class="label">Years</span><span><!-- empty --></span>
       <span class="label">Months</span><span><!-- empty --></span>
       <span class="label">Days</span>
 
-      
+
       <span id="hours"></span><span>:</span>
       <span id="minutes"></span><span>:</span>
       <span id="seconds"></span>
-      
+
       <span class="label">Hours</span><span><!-- empty --></span>
       <span class="label">Minutes</span><span><!-- empty --></span>
       <span class="label">Seconds</span>
@@ -85,12 +110,42 @@
 
 <div id="clock">
   <div id="widget">
-    <h1>Loading...</h1>
-    <noscript>Error: JS is required</noscript>
+    <h1>Loading...<noscript>Error: JS is required</noscript></h1>
   </div>
 </div>
 
-<div id="now" class="center"><!-- current time --></div>
+<div id="now" class="center">Click here to set another date.</div>
 
+<dialog>
+  <form>
+    Each event is separated by a newline. Certain events like "The New
+    Year" or the seasons are hard-coded.
+    <details>
+        Format: <code><i>spec, desc</i></code>, e.g.
+        <code>4 1, April Fools' Day</code>. <i>desc</i> is optional.
+        Specs:
+        <ul>
+          <li><code>YYYY</code> or <code>D</code></li>
+          <li><code>M D</code> or <code>m M</code> or <code>h H</code></li>
+          <li><code>hm H M</code> or <code>YYYY M D</code></li>
+          <li><code>YYYY M D H or YYYY M D H M</code></li>
+        </ul>
+    </details>
+    <textarea rows="5" autofocus="true"
+              placeholder="4 1, April Fools' Day"
+              spellcheck="false"></textarea>
+
+    <br><br>Update interval (ms):
+    <input type='number' value='1000' min='1000' max='5000' step='500'>
+
+    <hr>
+    <input type='submit' value='OK'>
+    <button>Cancel</button>
+    <a href='https://github.com/gromnitsky/springclock'
+       target='_blank' style='float: right'>Help</a>
+  </form>
+</dialog>
+
+<script src="node_modules/dialog-polyfill/dist/dialog-polyfill.js"></script>
 <script src="node_modules/moment/min/moment.min.js"></script>
 <script src="main.js"></script>
