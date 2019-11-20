@@ -39,7 +39,7 @@ function update_screen(select_event, now) {
         let diff = moment(event.date).diff(now())
         if (diff < 0) {
             diff = -1 * ((diff / 1000) | 0)
-            if (diff < 3) {
+            if (diff < 30) {
                 transition.update(event, diff)
                 countdown.live = false
             } else {

@@ -19,17 +19,24 @@
   code { background: #f7f7f7; }
 
   @media (orientation: landscape) {
-    .triplet { font-size: 25vh; }
+    .countdown { font-size: 25vh; }
+    .transition { font-size: 50vh; }
   }
   @media (orientation: portrait) {
-    .triplet { font-size: 20vw; }
+    .countdown { font-size: 24vw; }
+    .transition { font-size: 40vh; }
   }
 
-  .triplet {
+  .transition {
+    align-self: center;
+  }
+  .countdown {
     display: grid;
     grid-template-columns: 30% auto 30% auto 30%;
+    justify-content: center;
+    align-content: center;
   }
-  .triplet span { justify-self: center; }
+  .countdown span { justify-self: center; }
   .label { font-size: 1vh; }
 
   #clock {
@@ -53,6 +60,7 @@
     padding: 0.5em 0;
     margin: 0 -0.5em;
     cursor: pointer;
+    color:blue;
   }
   #now:hover { background: yellow; }
 
@@ -78,31 +86,29 @@
 </style>
 
 <template id="countdown">
-  <div style="flex-grow: 1">
-    <div class="triplet">
-      <span id="years"></span><span>-</span>
-      <span id="months"></span><span>-</span>
-      <span id="days"></span>
+  <div class="countdown" style="flex-grow: 1">
+    <span id="years"></span><span>-</span>
+    <span id="months"></span><span>-</span>
+    <span id="days"></span>
 
-      <span class="label">Years</span><span><!-- empty --></span>
-      <span class="label">Months</span><span><!-- empty --></span>
-      <span class="label">Days</span>
+    <span class="label">Years</span><span><!-- empty --></span>
+    <span class="label">Months</span><span><!-- empty --></span>
+    <span class="label">Days</span>
 
 
-      <span id="hours"></span><span>:</span>
-      <span id="minutes"></span><span>:</span>
-      <span id="seconds"></span>
+    <span id="hours"></span><span>:</span>
+    <span id="minutes"></span><span>:</span>
+    <span id="seconds"></span>
 
-      <span class="label">Hours</span><span><!-- empty --></span>
-      <span class="label">Minutes</span><span><!-- empty --></span>
-      <span class="label">Seconds</span>
-    </div>
+    <span class="label">Hours</span><span><!-- empty --></span>
+    <span class="label">Minutes</span><span><!-- empty --></span>
+    <span class="label">Seconds</span>
   </div>
   <h1 class="center">Until <span class="event_name"></span></h1>
 </template>
 
 <template id="transition">
-  <div style="flex-grow: 1">
+  <div class="transition" style="flex-grow: 1">
     <span id="seconds"></span>
   </div>
   <h1 class="center">Seconds since <span class="event_name"></span></h1>
