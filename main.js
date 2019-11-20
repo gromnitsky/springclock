@@ -8,7 +8,7 @@ if (typeof window !== 'undefined') {
 
 function main() {
     Settings()
-    let events = seasons.concat(get_events_from_url())
+    let events = get_events_from_url().concat(seasons)
     console.log(events)
 
     let now = () => new Date()
@@ -113,7 +113,7 @@ function Settings() {
             return
         }
         let params = new URLSearchParams(window.location.search)
-        if (events.length) params.set('e', text)
+        events.length ? params.set('e', text) : params.delete('e')
         window.location.replace(window.location.pathname + '?' + params)
     }
 
@@ -127,11 +127,11 @@ function Settings() {
 }
 
 let seasons = [
+    { spec: '12 1', desc: 'Winter' },
     { spec: '1 1', desc: 'The New Year' }, // Event
     { spec: '3 1', desc: 'Spring' },
     { spec: '6 1', desc: 'Summer' },
     { spec: '9 1', desc: 'Autumn' },
-    { spec: '12 1', desc: 'Winter' }
 ]
 exports.seasons = seasons
 
@@ -145,7 +145,7 @@ function future_date_select(events, now) {
             return false
         }
         return { date, spec: v.spec, desc: v.desc }
-    }).filter(Boolean).sort( (a, b) => a.date - b.date)
+    }).filter(Boolean)
     now = now || new Date()
     for (let event of events) {
         if (now <= event.date) return event
@@ -287,7 +287,7 @@ function mk_date_utc(year, month = 1, date = 1, hour = 0, minutes = 0) {
 exports.future_date = future_date
 
 function events_parse(str) {
-    return str.split("\n").map( (line, idx) => {
+    return (str || '').split("\n").map( (line, idx) => {
         let [spec, desc] = line.split(',')
         if (!spec.trim()) return false
         try {
