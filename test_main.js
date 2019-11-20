@@ -78,13 +78,8 @@ suite('future_date', function() {
 
 suite('future date selection', function() {
     test('future_date_select', function() {
-        assert.equal(future_date_select(seasons, new Date('2019-11-17T11:11:11.000Z')).desc, 'Winter')
-        let seasons2 = seasons.slice()
-        seasons2.shift()
-        assert.equal(future_date_select(seasons2, new Date('2019-12-17T11:11:11.000Z')).desc, 'The New Year')
-
-        let events = [{spec: '12 14', desc: 'omglol'}].concat(seasons)
-        assert.equal(future_date_select(events, new Date('2019-12-13T11:11:11.000Z')).desc, 'omglol')
+        assert.equal(future_date_select(seasons, true, new Date('2019-11-17T11:11:11.000Z')).event.desc, 'Winter')
+        assert.equal(future_date_select(seasons, true, new Date('2019-01-17T11:11:11.000Z')).event.desc, 'Spring')
     })
 
     test('events_parse', function() {

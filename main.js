@@ -8,11 +8,20 @@ if (typeof window !== 'undefined') {
 
 function main() {
     Settings()
-    let events = get_events_from_url().concat(seasons)
-    console.log(events)
+    let events = get_events_from_url()
 
     let now = () => new Date()
-    let select_event = () => future_date_select(events)
+    let select_event = () => {
+        let e
+        try {
+            e = future_date_select(events)
+        } catch (_) {
+            return future_date_select(seasons, true).event
+        }
+        events.splice(e.idx, 1)
+        events.push(e.event)
+        return e.event
+    }
 
     let upd = update_screen(select_event, now)
     window.setInterval(upd, 1*1000)
@@ -136,7 +145,7 @@ let seasons = [
 exports.seasons = seasons
 
 // `dates` - [ {events: Event, desc: String }, ...]
-function future_date_select(events, now) {
+function future_date_select(events, sort, now) {
     events = events.slice().map( v => { // silently ignore invalid events
         let date
         try {
@@ -146,9 +155,10 @@ function future_date_select(events, now) {
         }
         return { date, spec: v.spec, desc: v.desc }
     }).filter(Boolean)
+    if (sort) events.sort( (a, b) => a.date - b.date)
     now = now || new Date()
-    for (let event of events) {
-        if (now <= event.date) return event
+    for (let idx in events) {
+        if (now <= events[idx].date) return {event: events[idx], idx}
     }
     throw new Error('no suitable future event found')
 }
