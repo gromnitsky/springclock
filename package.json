@@ -1,6 +1,12 @@
 {
-  "dependencies": {
-    "dialog-polyfill": "^0.5.0",
-    "moment": "^2.24.0"
-  }
+    "private": true,
+    "name": "adieu",
+    "version": "1.0.0",
+    "author": "Alexander Gromnitsky",
+    "license": "MIT",
+    "repository": "github:gromnitsky/springclock",
+    "dependencies": {
+        "dialog-polyfill": "^0.5.0",
+        "moment": "^2.24.0"
+    }
 }
